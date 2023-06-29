@@ -51,6 +51,8 @@ class CustomGNN(torch.nn.Module):
             return GCN2ConvLayer
         elif model_type == 'mlp':
             return MLPLayer
+        elif model_type == 'lgnn':
+            return LGNNLayer
         else:
             raise ValueError("Model {} unavailable".format(model_type))
 
