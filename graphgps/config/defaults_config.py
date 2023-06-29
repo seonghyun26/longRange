@@ -16,6 +16,9 @@ def overwrite_defaults_cfg(cfg):
     
     # Overwrite default rounding precision
     cfg.round = 5
+    
+    # Default gpu
+    cfg.device = 4
 
 
 register_config('overwrite_defaults', overwrite_defaults_cfg)
