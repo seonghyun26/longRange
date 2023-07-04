@@ -9,6 +9,7 @@ from graphgps.layer.gatedgcn_layer import GatedGCNLayer
 from graphgps.layer.gine_conv_layer import GINEConvLayer
 from graphgps.layer.gcnii_conv_layer import GCN2ConvLayer
 from graphgps.layer.mlp_layer import MLPLayer
+from graphgps.layer.lgnn_layer import LGNNLayer
 
 class CustomGNN(torch.nn.Module):
     """
