@@ -9,7 +9,9 @@ from graphgps.layer.gatedgcn_layer import GatedGCNLayer
 from graphgps.layer.gine_conv_layer import GINEConvLayer
 from graphgps.layer.gcnii_conv_layer import GCN2ConvLayer
 from graphgps.layer.mlp_layer import MLPLayer
-from graphgps.layer.lgnn_layer import LGNNLayer
+from graphgps.layer.lgnn_layer import LGNNGINELayer
+from graphgps.layer.lgnn_layer import LGNNGatedGCNLayer
+from graphgps.layer.lgnn_layer import graph2linegraph, linegraph2graph
 
 class CustomGNN(torch.nn.Module):
     """
@@ -33,11 +35,16 @@ class CustomGNN(torch.nn.Module):
         conv_model = self.build_conv_model(cfg.gnn.layer_type)
         self.model_type = cfg.gnn.layer_type
         layers = []
+        if cfg.gnn.linegraph:
+            layers.append(graph2linegraph())
         for _ in range(cfg.gnn.layers_mp):
             layers.append(conv_model(dim_in,
                                      dim_in,
                                      dropout=cfg.gnn.dropout,
-                                     residual=cfg.gnn.residual))
+                                     residual=cfg.gnn.residual,
+                                     ))
+        if cfg.gnn.linegraph:
+            layers.append(linegraph2graph())
         self.gnn_layers = torch.nn.Sequential(*layers)
 
         GNNHead = register.head_dict[cfg.gnn.head]
@@ -52,8 +59,12 @@ class CustomGNN(torch.nn.Module):
             return GCN2ConvLayer
         elif model_type == 'mlp':
             return MLPLayer
-        elif model_type == 'lgnn':
-            return LGNNLayer
+        # elif model_type == 'lgnngineconv':
+        #     return LGNNGINELayer
+        # elif model_type == 'lgnngcniiconv':
+        #     return LGNNGCN2ConvLayer
+        # elif model_type == 'lgnngatedgcnconv':
+        #     return LGNNGatedGCNLayer
         else:
             raise ValueError("Model {} unavailable".format(model_type))
 
@@ -65,6 +76,5 @@ class CustomGNN(torch.nn.Module):
             else:
                 batch = module(batch)
         return batch
-
 
 register_network('custom_gnn', CustomGNN)

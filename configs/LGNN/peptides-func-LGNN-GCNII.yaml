@@ -28,11 +28,15 @@ gnn:
   layers_pre_mp: 0
   layers_mp: 5
   layers_post_mp: 1
-  dim_inner: 208
-  layer_type: gineconv
+  dim_inner: 300
+  layer_type: gcniiconv
+  stage_type: stack
+  batchnorm: True
   act: relu
-  residual: True
   dropout: 0.0
+  agg: mean
+  normalize_adj: False
+  linegraph: True
 optim:
   optimizer: adamW
   weight_decay: 0.0

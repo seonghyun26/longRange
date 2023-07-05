@@ -10,11 +10,18 @@ dataset:
   task_type: classification_multilabel
   transductive: False
   node_encoder: True
-  node_encoder_name: Atom
+  node_encoder_name: Atom+RWSE
   node_encoder_bn: False
   edge_encoder: True
   edge_encoder_name: Bond
   edge_encoder_bn: False
+posenc_RWSE:
+  enable: True
+  kernel:
+    times_func: range(1,17)
+  model: Linear
+  dim_pe: 20
+  raw_norm_type: BatchNorm
 train:
   mode: custom
   batch_size: 64
@@ -26,10 +33,10 @@ model:
   graph_pooling: mean
 gnn:
   layers_pre_mp: 0
-  layers_mp: 5
+  layers_mp: 1
   layers_post_mp: 1
-  dim_inner: 208
-  layer_type: gineconv
+  dim_inner: 138
+  layer_type: lgnngatedgcnconv
   act: relu
   residual: True
   dropout: 0.0

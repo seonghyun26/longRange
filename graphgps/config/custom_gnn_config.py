@@ -8,6 +8,8 @@ def custom_gnn_cfg(cfg):
 
     # Use residual connections between the GNN layers.
     cfg.gnn.residual = False
+    
+    cfg.gnn.linegraph = False
 
 
 register_config('custom_gnn', custom_gnn_cfg)
