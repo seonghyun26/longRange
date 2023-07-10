@@ -9,8 +9,6 @@ from graphgps.layer.gatedgcn_layer import GatedGCNLayer
 from graphgps.layer.gine_conv_layer import GINEConvLayer
 from graphgps.layer.gcnii_conv_layer import GCN2ConvLayer
 from graphgps.layer.mlp_layer import MLPLayer
-from graphgps.layer.lgnn_layer import LGNNGINELayer
-from graphgps.layer.lgnn_layer import LGNNGatedGCNLayer
 from graphgps.layer.lgnn_layer import graph2linegraph, linegraph2graph
 
 class CustomGNN(torch.nn.Module):
@@ -37,14 +35,22 @@ class CustomGNN(torch.nn.Module):
         layers = []
         if cfg.gnn.linegraph:
             layers.append(graph2linegraph())
-        for _ in range(cfg.gnn.layers_mp):
-            layers.append(conv_model(dim_in,
-                                     dim_in,
-                                     dropout=cfg.gnn.dropout,
-                                     residual=cfg.gnn.residual,
-                                     ))
-        if cfg.gnn.linegraph:
+            for _ in range(cfg.gnn.layers_mp):
+                layers.append(conv_model(
+                    dim_in*2,
+                    dim_out*2,
+                    dropout=cfg.gnn.dropout,
+                    residual=cfg.gnn.residual,
+                ))
             layers.append(linegraph2graph())
+        else:
+            for _ in range(cfg.gnn.layers_mp):
+                layers.append(conv_model(
+                    dim_in,
+                    dim_out,
+                    dropout=cfg.gnn.dropout,
+                    residual=cfg.gnn.residual,
+                ))
         self.gnn_layers = torch.nn.Sequential(*layers)
 
         GNNHead = register.head_dict[cfg.gnn.head]
@@ -59,12 +65,6 @@ class CustomGNN(torch.nn.Module):
             return GCN2ConvLayer
         elif model_type == 'mlp':
             return MLPLayer
-        # elif model_type == 'lgnngineconv':
-        #     return LGNNGINELayer
-        # elif model_type == 'lgnngcniiconv':
-        #     return LGNNGCN2ConvLayer
-        # elif model_type == 'lgnngatedgcnconv':
-        #     return LGNNGatedGCNLayer
         else:
             raise ValueError("Model {} unavailable".format(model_type))
 
