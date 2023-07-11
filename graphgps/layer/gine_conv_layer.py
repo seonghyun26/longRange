@@ -98,8 +98,10 @@ class GINEConvLayer(nn.Module):
         self.residual = residual
 
         gin_nn = nn.Sequential(
-            pyg_nn.Linear(dim_in, dim_out), nn.ReLU(),
-            pyg_nn.Linear(dim_out, dim_out))
+            pyg_nn.Linear(dim_in, dim_out),
+            nn.ReLU(),
+            pyg_nn.Linear(dim_out, dim_out)
+        )
         self.model = pyg_nn.GINEConv(gin_nn)
 
     def forward(self, batch):

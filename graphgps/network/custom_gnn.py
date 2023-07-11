@@ -38,7 +38,7 @@ class CustomGNN(torch.nn.Module):
             for _ in range(cfg.gnn.layers_mp):
                 layers.append(conv_model(
                     dim_in*2,
-                    dim_out*2,
+                    dim_in*2,
                     dropout=cfg.gnn.dropout,
                     residual=cfg.gnn.residual,
                 ))
@@ -47,7 +47,7 @@ class CustomGNN(torch.nn.Module):
             for _ in range(cfg.gnn.layers_mp):
                 layers.append(conv_model(
                     dim_in,
-                    dim_out,
+                    dim_in,
                     dropout=cfg.gnn.dropout,
                     residual=cfg.gnn.residual,
                 ))

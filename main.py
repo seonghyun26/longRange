@@ -103,6 +103,22 @@ def run_loop_settings():
         run_ids = split_indices
     return run_ids, seeds, split_indices
 
+def preprocess(loaders):
+    for loader in loaders:
+        data = loader.dataset.data
+        slices = loader.dataset.slices
+        
+        # shape = data.x.shape
+        lg_node_index = data.edge_index
+        lg_edge_index = torch.nonzero(
+            (lg_node_index.T[:, 1, None] == lg_node_index.T[:, 0]) &
+            (lg_node_index.T[:, 0, None] != lg_node_index.T[:, 1])
+        ).T
+        
+        # slices
+        slices['lg_node_index'] = slices['edge_index']
+        
+    return loaders
 
 if __name__ == '__main__':
     # Load cmd line args
@@ -124,7 +140,7 @@ if __name__ == '__main__':
         cfg.run_id = run_id
         seed_everything(cfg.seed)
         auto_select_device()
-        # cfg.device = 2
+        
         if cfg.train.finetune:
             cfg = load_pretrained_model_cfg(cfg)
         logging.info(f"[*] Run ID {run_id}: seed={cfg.seed}, "
@@ -132,6 +148,8 @@ if __name__ == '__main__':
         logging.info(f"    Starting now: {datetime.datetime.now()}")
         # Set machine learning pipeline
         loaders = create_loader()
+        # if cfg.dataset.name == 'peptides-functional':
+        #     loaders = preprocess(loaders)
         loggers = create_logger()
         model = create_model()
         if cfg.train.finetune:

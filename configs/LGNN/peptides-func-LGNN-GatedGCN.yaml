@@ -17,7 +17,7 @@ dataset:
   edge_encoder_bn: False
 train:
   mode: custom
-  batch_size: 128
+  batch_size: 64
   eval_period: 1
   ckpt_period: 100
 model:
@@ -29,10 +29,12 @@ gnn:
   layers_mp: 5
   layers_post_mp: 1
   dim_inner: 138
+  # dim_inner: 69
   layer_type: gatedgcnconv
   act: relu
   residual: True
   dropout: 0.0
+  linegraph: True
 optim:
   optimizer: adamW
   weight_decay: 0.0

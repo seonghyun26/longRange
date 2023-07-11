@@ -91,10 +91,10 @@ class graph2linegraph(nn.Module):
         # Save original information in batch
         batch.shape = batch.x.shape
         batch.org_x = batch.x
-        if hasattr(batch, 'x0'):
-            batch.org_x0 = batch.x0
         batch.org_edge_index = batch.edge_index
         batch.org_edge_attr = batch.edge_attr
+        if hasattr(batch, 'x0'):
+            batch.org_x0 = batch.x0
         
         lg_node_idx = batch.edge_index.T
         batch.lg_node_idx = lg_node_idx
@@ -102,10 +102,11 @@ class graph2linegraph(nn.Module):
         lg_x = batch.x[lg_node_idx]
         batch.x = torch.reshape(lg_x, (lg_x.shape[0], -1))
         lg_x = None
-        
         if hasattr(batch, 'edge_attr'):
-            # batch.x = torch.stack([batch.x, batch.edge_attr], dim=2).mean(dim=2)
             batch.x = torch.stack([batch.x, batch.edge_attr.repeat(1,2)], dim=2).mean(dim=2)
+        # NOTE: Line graph node feature 2
+        # batch.x = batch.edge_attr
+            
         if hasattr(batch, 'x0'):
             lg_x0 = batch.x0[lg_node_idx]
             batch.x0 = torch.reshape(lg_x0, (lg_x0.shape[0], -1))
@@ -114,14 +115,12 @@ class graph2linegraph(nn.Module):
 
         # NOTE: line graph edge index
         # TODO: Better computation for finding lg_edge_idx?
-        startNode, endNode = lg_node_idx[:, 0], lg_node_idx[:, 1]   
-        # lg_edge_idx = torch.nonzero((endNode[:, None] == startNode[:, None].t()) & (startNode[:, None] != endNode[:, None]), as_tuple=False)
+        # startNode, endNode = lg_node_idx[:, 0], lg_node_idx[:, 1]   
         lg_edge_idx = torch.nonzero((lg_node_idx[:, 1, None] == lg_node_idx[:, 0]) & (lg_node_idx[:, 0, None] != lg_node_idx[:, 1]))
         batch.edge_index = lg_edge_idx.T
-        startNode = None
-        endNode = None
         
-        # NOTE: New edge attribute index
+        
+        # NOTE: line graph edge
         new_edge_idx = lg_node_idx[lg_edge_idx]
         lg_edge_attr = batch.org_x[new_edge_idx[:, 0, 1]].repeat(1,2)
         if hasattr(batch, 'edge_attr'):
@@ -137,6 +136,9 @@ class graph2linegraph(nn.Module):
             startEdgeAttr = None
             endEdgeAttr = None
         batch.edge_attr = lg_edge_attr
+        
+        # Garbage Collecting
+        lg_edge_idx = None
         lg_edge_attr = None
 
         return batch
@@ -148,7 +150,10 @@ class linegraph2graph(nn.Module):
         super().__init__()
         
     def pad(self, tensor, originalShape):
-        return torch.cat([tensor, torch.zeros(originalShape[0] - tensor.shape[0], originalShape[1], device=tensor.device)])
+        if originalShape[0] - tensor.shape[0] > 0:
+            return torch.cat([tensor, torch.zeros(originalShape[0] - tensor.shape[0], originalShape[1], device=tensor.device)])
+        else:
+            return tensor
     
     def forward(self, batch):
         # Recover node feature
@@ -159,29 +164,34 @@ class linegraph2graph(nn.Module):
         frontNode = self.pad(frontNode, shape)
         backNode = scatter_mean(batch.x, batch.lg_node_idx[:,1], dim=0)[:, :shape[1]]
         backNode = self.pad(backNode, shape)
-        graphX = torch.add(
+        batch.x = torch.add(
             frontNode,
             backNode
         )
-        # graphX = torch.cat([graphX, torch.zeros(shape[0] - graphX.shape[0], shape[1], device=graphX.device)])
-        batch.x = graphX
         
         # Recover edge feature
         # batch.edge_attr = torch.stack([batch.org_edge_attr, batch.x], dim=2).mean(dim=2)
         shape = batch.org_edge_attr.shape
-        frontEdge = scatter_mean(batch.edge_attr, batch.edge_index.T[:,0], dim=0)[:, shape[1]:]
+        frontEdge = scatter_mean(batch.edge_attr, batch. edge_index.T[:,0], dim=0)[:, shape[1]:]
         frontEdge = self.pad(frontEdge, shape)
         backEdge = scatter_mean(batch.edge_attr, batch.edge_index.T[:,1], dim=0)[:, :shape[1]]
         backEdge = self.pad(backEdge, shape)
-        graphEdgeAttr = torch.add(
+        batch.edge_attr = torch.add(
             frontEdge,
             backEdge,
         )
-        # graphEdgeAttr = torch.cat([graphEdgeAttr, torch.zeros(shape[0] - graphEdgeAttr.shape[0], shape[1], device=graphEdgeAttr.device)])
-        batch.edge_attr = graphEdgeAttr
         
         if hasattr(batch, 'x0'):
             batch.x0 = batch.org_x0
         batch.edge_index = batch.org_edge_index
+        
+        # Garbage Collecting 
+        frontNode = None
+        backNode = None
+        graphX = None
+        frontEdge = None
+        backEdge = None
+        graphEdgeAttr = None
+        shape = None
         
         return batch
