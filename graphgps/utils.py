@@ -132,5 +132,6 @@ def make_wandb_name(cfg):
     if cfg.gnn.linegraph:
         name += ".LGNN"
         name += str(cfg.gnn.layers_mp)
+        name += ".v"+str(cfg.gnn.lgvariant)
         
     return name

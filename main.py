@@ -108,6 +108,25 @@ def preprocess(loaders):
         data = loader.dataset.data
         slices = loader.dataset.slices
         
+        x = data.x
+        edge_index = data.edge_index
+        edge_attr = data.edge_attr
+        
+        lg_x = edge_attr
+        lg_x_slice = slices['edge_index']
+        
+        lg_node_idx = data.edge_index.T
+        lg_node_index_slice = [0]
+        
+        lg_node_index = []
+        lg_node_index_slice = [0]
+        lg_edge_index = []
+        lg_edge_attr = []
+        lg_edge_slice = [0]
+        
+        lg_edge_idx = torch.nonzero((lg_node_idx[:, 1, None] == lg_node_idx[:, 0]) & (lg_node_idx[:, 0, None] != lg_node_idx[:, 1]))
+
+        
         # shape = data.x.shape
         lg_node_index = data.edge_index
         lg_edge_index = torch.nonzero(

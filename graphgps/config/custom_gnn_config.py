@@ -10,6 +10,8 @@ def custom_gnn_cfg(cfg):
     cfg.gnn.residual = False
     # Convert graph to line grpah before GNN layers.
     cfg.gnn.linegraph = False
+    # line graph variant version
+    cfg.gnn.lgvariant = 1
 
 
 register_config('custom_gnn', custom_gnn_cfg)

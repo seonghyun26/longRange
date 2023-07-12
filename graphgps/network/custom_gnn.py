@@ -8,6 +8,7 @@ from torch_geometric.graphgym.register import register_network
 from graphgps.layer.gatedgcn_layer import GatedGCNLayer
 from graphgps.layer.gine_conv_layer import GINEConvLayer
 from graphgps.layer.gcnii_conv_layer import GCN2ConvLayer
+from graphgps.layer.gat_conv_layer import GATConvLayer
 from graphgps.layer.mlp_layer import MLPLayer
 from graphgps.layer.lgnn_layer import graph2linegraph, linegraph2graph
 
@@ -34,15 +35,38 @@ class CustomGNN(torch.nn.Module):
         self.model_type = cfg.gnn.layer_type
         layers = []
         if cfg.gnn.linegraph:
-            layers.append(graph2linegraph())
-            for _ in range(cfg.gnn.layers_mp):
-                layers.append(conv_model(
-                    dim_in*2,
-                    dim_in*2,
-                    dropout=cfg.gnn.dropout,
-                    residual=cfg.gnn.residual,
-                ))
-            layers.append(linegraph2graph())
+            if cfg.gnn.lgvariant == 1:
+                layers.append(graph2linegraph(cfg.gnn.lgvariant))
+                for _ in range(cfg.gnn.layers_mp):
+                    layers.append(conv_model(
+                        dim_in*2,
+                        dim_in*2,
+                        dropout=cfg.gnn.dropout,
+                        residual=cfg.gnn.residual,
+                    ))
+                layers.append(linegraph2graph(cfg.gnn.lgvariant))
+            elif cfg.gnn.lgvariant == 2:
+                layers.append(graph2linegraph(cfg.gnn.lgvariant))
+                for _ in range(cfg.gnn.layers_mp):
+                    layers.append(conv_model(
+                        dim_in,
+                        dim_in,
+                        dropout=cfg.gnn.dropout,
+                        residual=cfg.gnn.residual,
+                    ))
+                layers.append(linegraph2graph(cfg.gnn.lgvariant))
+            elif cfg.gnn.lgvariant == 3:
+                for _ in range(cfg.gnn.layers_mp):
+                    layers.append(conv_model(
+                        dim_in,
+                        dim_in,
+                        dropout=cfg.gnn.dropout,
+                        residual=cfg.gnn.residual,
+                    ))
+                # layers.append(linegraph2graph(cfg.gnn.lgvariant))
+            else:
+                print("wrong cfg in cfg.gnn.lgvariant. Check again")
+                assert()
         else:
             for _ in range(cfg.gnn.layers_mp):
                 layers.append(conv_model(
@@ -63,6 +87,8 @@ class CustomGNN(torch.nn.Module):
             return GINEConvLayer
         elif model_type == 'gcniiconv':
             return GCN2ConvLayer
+        elif model_type == 'gatconv':
+            return GATConvLayer
         elif model_type == 'mlp':
             return MLPLayer
         else:
