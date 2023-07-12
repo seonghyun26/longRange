@@ -25,6 +25,8 @@ from graphgps.finetuning import load_pretrained_model_cfg, \
     init_model_from_pretrained
 from graphgps.logger import create_logger
 
+from tqdm import tqdm
+
 
 def new_optimizer_config(cfg):
     return OptimizerConfig(optimizer=cfg.optim.optimizer,
@@ -104,38 +106,95 @@ def run_loop_settings():
     return run_ids, seeds, split_indices
 
 def preprocess(loaders):
-    for loader in loaders:
+    for loaderIdx, loader in enumerate(loaders):
+        loaderSplit = ["train", "valid", "test"]
+        print("Preprocessing {}".format(loaderSplit[loaderIdx]))
         data = loader.dataset.data
         slices = loader.dataset.slices
         
         x = data.x
         edge_index = data.edge_index
         edge_attr = data.edge_attr
+        numberOfGraphs = slices['y'].shape[0]-1
         
-        lg_x = edge_attr
-        lg_x_slice = slices['edge_index']
+        x_index_slice = slices['x']
+        edge_index_slice = slices['edge_index']
         
-        lg_node_idx = data.edge_index.T
-        lg_node_index_slice = [0]
+        # lg_node_x = []
+        # lg_node_index = []
+        # lg_node_index_slice = [0]
+        # lg_edge_index = []
+        # lg_edge_attr = []
+        # lg_edge_slice = [0]
+        lg_edge_idx_list = []
+        lg_edge_idx_list_slice = [0]
         
-        lg_node_index = []
-        lg_node_index_slice = [0]
-        lg_edge_index = []
-        lg_edge_attr = []
-        lg_edge_slice = [0]
+        for graphIdx in tqdm(range(numberOfGraphs)):
+            # print(graphIdx)
+            graphEdgeIdx = edge_index[:, edge_index_slice[graphIdx]:edge_index_slice[graphIdx+1]]
+            # graphEdgeAttr = edge_attr[edge_index_slice[graphIdx]:edge_index_slice[graphIdx+1], :]
         
-        lg_edge_idx = torch.nonzero((lg_node_idx[:, 1, None] == lg_node_idx[:, 0]) & (lg_node_idx[:, 0, None] != lg_node_idx[:, 1]))
+            # linegraphNodeIdx = graphEdgeIdx.T
+            # linegraphEdgeIdx = torch.nonzero(
+            #     (linegraphNodeIdx[:, 1, None] == linegraphNodeIdx[:, 0]) &
+            #     (linegraphNodeIdx[:, 0, None] != linegraphNodeIdx[:, 1])
+            # )
+            # linegraphEdgeIdxbygraphNodeIdx = linegraphNodeIdx[linegraphEdgeIdx]
 
+            # # Method 1: Swap
+            # linegraphX = x[x_index_slice[graphIdx]:x_index_slice[graphIdx+1], :]
+            # linegraphEdgeAttr = linegraphX[linegraphEdgeIdxbygraphNodeIdx[:, 0, 1]]
+
+            # lg_node_x.append(linegraphX)
+            # lg_node_index.append(linegraphEdgeIdx.T)
+            # lg_node_index_slice.append(lg_node_index_slice[-1]+linegraphEdgeIdx.T.shape[1])
+            # lg_edge_index.append(linegraphEdgeIdx.T)
+            # lg_edge_attr.append(linegraphEdgeAttr)
+            # lg_edge_slice.append(lg_edge_slice[-1]+linegraphEdgeIdx.shape[0])
+            lg_node_idx = graphEdgeIdx.T
+            lg_edge_idx = torch.nonzero(
+                (lg_node_idx[:, 1, None] == lg_node_idx[:, 0]) &
+                (lg_node_idx[:, 0, None] != lg_node_idx[:, 1])
+            )
+            
+            lg_edge_idx_list.append(lg_edge_idx.T)
+            lg_edge_idx_list_slice.append(lg_edge_idx_list_slice[-1]+lg_edge_idx.shape[0])
+            
+        loader.dataset.data.lg_edge_idx = torch.cat(lg_edge_idx_list, dim=1)
+        loader.dataset.slices['lg_edge_idx'] = torch.tensor(lg_edge_idx_list_slice, dtype=torch.int)
         
-        # shape = data.x.shape
-        lg_node_index = data.edge_index
-        lg_edge_index = torch.nonzero(
-            (lg_node_index.T[:, 1, None] == lg_node_index.T[:, 0]) &
-            (lg_node_index.T[:, 0, None] != lg_node_index.T[:, 1])
-        ).T
+        # lg_node_x = torch.cat(lg_node_x, dim=0)
+        # lg_node_index = torch.cat(lg_node_index, dim=1)
+        # lg_node_index_slice = torch.tensor(lg_node_index_slice, dtype=torch.int)
+        # lg_edge_index = torch.cat(lg_edge_index, dim=1)
+        # lg_edge_attr = torch.cat(lg_edge_attr, dim=0)
+        # lg_edge_index_slice = torch.tensor(lg_edge_slice, dtype=torch.int)
+        # lg_edge_attr_slice = torch.tensor(lg_edge_slice, dtype=torch.int)
         
-        # slices
-        slices['lg_node_index'] = slices['edge_index']
+        #NOTE: to fix
+        # loader.dataset.data.org_x = x
+        # loader.dataset.slices['org_x'] = x_index_slice
+        # loader.dataset.data.org_edge_index = edge_index
+        # loader.dataset.slices['org_edge_index'] = edge_index_slice
+
+        # loader.dataset.data.lg_node_index = lg_node_index
+        # loader.dataset.data.edge_index = lg_edge_index
+        # loader.dataset.slices['edge_index'] = lg_edge_index_slice
+        # loader.dataset.data.x = edge_attr
+        # loader.dataset.slices['x'] = edge_index_slice
+        # loader.dataset.data.edge_attr = lg_edge_attr
+        # loader.dataset.slices['edge_attr'] = lg_edge_attr_slice
+        
+        
+        # pt_file[0].x = lg_x
+        # pt_file[1]['x'] = lg_x_slice
+        # pt_file[0].edge_index = lg_edge_index
+        # pt_file[1]['edge_index'] = lg_edge_index_slice
+        # pt_file[0].edge_attr = lg_edge_attr
+        # pt_file[1]['edge_attr'] = lg_edge_attr_slice
+        # pt_file[0].lg_node_idx = lg_node_index
+        # pt_file[1]['lg_node_idx'] = lg_node_index_slice
+        print("FLAG")
         
     return loaders
 
@@ -167,8 +226,8 @@ if __name__ == '__main__':
         logging.info(f"    Starting now: {datetime.datetime.now()}")
         # Set machine learning pipeline
         loaders = create_loader()
-        # if cfg.dataset.name == 'peptides-functional':
-        #     loaders = preprocess(loaders)
+        # if cfg.gnn.lgvariant == 4:
+            # loaders = preprocess(loaders)
         loggers = create_logger()
         model = create_model()
         if cfg.train.finetune:

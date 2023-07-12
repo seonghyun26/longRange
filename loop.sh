@@ -1,7 +1,11 @@
-# DATASET="peptides-struct"
+
 DATASET="peptides-func"
 
-python main.py --cfg configs/LGNN/$DATASET-LGNN-GCNII.yaml  wandb.use False  wandb.project lrgb  gnn.lgvariant 3
+
+for model in "GCNII" "GINE" "GatedGCN" 
+do
+  python main.py --cfg configs/LGNN/$DATASET-LGNN-$model.yaml  wandb.use True  wandb.project lrgb  gnn.lgvariant 3
+done
 
 # sleep 10
 # python main.py --cfg configs/GINE/$DATASET-GINE.yaml  wandb.use True  wandb.project lrgb &

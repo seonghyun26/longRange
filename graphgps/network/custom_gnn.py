@@ -56,6 +56,18 @@ class CustomGNN(torch.nn.Module):
                     ))
                 layers.append(linegraph2graph(cfg.gnn.lgvariant))
             elif cfg.gnn.lgvariant == 3:
+                layers.append(graph2linegraph(cfg.gnn.lgvariant))
+                for _ in range(cfg.gnn.layers_mp):
+                    layers.append(conv_model(
+                        dim_in*2,
+                        dim_in*2,
+                        dropout=cfg.gnn.dropout,
+                        residual=cfg.gnn.residual,
+                    ))
+                layers.append(linegraph2graph(cfg.gnn.lgvariant))
+            elif cfg.gnn.lgvariant == 4:
+                # line graph readout
+                layers.append(graph2linegraph(cfg.gnn.lgvariant))
                 for _ in range(cfg.gnn.layers_mp):
                     layers.append(conv_model(
                         dim_in,
@@ -63,7 +75,6 @@ class CustomGNN(torch.nn.Module):
                         dropout=cfg.gnn.dropout,
                         residual=cfg.gnn.residual,
                     ))
-                # layers.append(linegraph2graph(cfg.gnn.lgvariant))
             else:
                 print("wrong cfg in cfg.gnn.lgvariant. Check again")
                 assert()
