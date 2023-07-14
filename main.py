@@ -105,14 +105,13 @@ def run_loop_settings():
         run_ids = split_indices
     return run_ids, seeds, split_indices
 
-def preprocess(loaders):
+def preprocess(loaders, lgvariant):
     for loaderIdx, loader in enumerate(loaders):
         loaderSplit = ["train", "valid", "test"]
         print("Preprocessing {}".format(loaderSplit[loaderIdx]))
         data = loader.dataset.data
         slices = loader.dataset.slices
         
-        x = data.x
         edge_index = data.edge_index
         edge_attr = data.edge_attr
         numberOfGraphs = slices['y'].shape[0]-1
@@ -120,42 +119,27 @@ def preprocess(loaders):
         x_index_slice = slices['x']
         edge_index_slice = slices['edge_index']
         
-        # lg_node_x = []
-        # lg_node_index = []
-        # lg_node_index_slice = [0]
-        # lg_edge_index = []
-        # lg_edge_attr = []
-        # lg_edge_slice = [0]
+        lg_node_index = edge_index
+        lg_node_index_slice = edge_index_slice
         lg_edge_idx_list = []
         lg_edge_idx_list_slice = [0]
         
         for graphIdx in tqdm(range(numberOfGraphs)):
-            # print(graphIdx)
-            graphEdgeIdx = edge_index[:, edge_index_slice[graphIdx]:edge_index_slice[graphIdx+1]]
-            # graphEdgeAttr = edge_attr[edge_index_slice[graphIdx]:edge_index_slice[graphIdx+1], :]
-        
-            # linegraphNodeIdx = graphEdgeIdx.T
-            # linegraphEdgeIdx = torch.nonzero(
-            #     (linegraphNodeIdx[:, 1, None] == linegraphNodeIdx[:, 0]) &
-            #     (linegraphNodeIdx[:, 0, None] != linegraphNodeIdx[:, 1])
-            # )
-            # linegraphEdgeIdxbygraphNodeIdx = linegraphNodeIdx[linegraphEdgeIdx]
+            graphNodeIdx = lg_node_index[:, lg_node_index_slice[graphIdx]:lg_node_index_slice[graphIdx+1]]
+            # graphEdgeIdx = edge_index[:, edge_index_slice[graphIdx]:edge_index_slice[graphIdx+1]]
 
-            # # Method 1: Swap
-            # linegraphX = x[x_index_slice[graphIdx]:x_index_slice[graphIdx+1], :]
-            # linegraphEdgeAttr = linegraphX[linegraphEdgeIdxbygraphNodeIdx[:, 0, 1]]
-
-            # lg_node_x.append(linegraphX)
-            # lg_node_index.append(linegraphEdgeIdx.T)
-            # lg_node_index_slice.append(lg_node_index_slice[-1]+linegraphEdgeIdx.T.shape[1])
-            # lg_edge_index.append(linegraphEdgeIdx.T)
-            # lg_edge_attr.append(linegraphEdgeAttr)
-            # lg_edge_slice.append(lg_edge_slice[-1]+linegraphEdgeIdx.shape[0])
-            lg_node_idx = graphEdgeIdx.T
-            lg_edge_idx = torch.nonzero(
-                (lg_node_idx[:, 1, None] == lg_node_idx[:, 0]) &
-                (lg_node_idx[:, 0, None] != lg_node_idx[:, 1])
-            )
+            # How to make egees
+            if lgvariant ==1 :
+                # Non-backtracking edges
+                lg_edge_index = torch.nonzero(
+                    (graphNodeIdx[:, 1, None] == graphNodeIdx[:, 0]) &
+                    (graphNodeIdx[:, 0, None] != graphNodeIdx[:, 1])
+                )
+            elif lgvariant == 2:
+                # Connect ij and jk, regardless of i and k
+                lg_edge_index = torch.nonzero(
+                    (graphNodeIdx[:, 1, None] == graphNodeIdx[:, 0])
+                )
             
             lg_edge_idx_list.append(lg_edge_idx.T)
             lg_edge_idx_list_slice.append(lg_edge_idx_list_slice[-1]+lg_edge_idx.shape[0])
@@ -226,10 +210,12 @@ if __name__ == '__main__':
         logging.info(f"    Starting now: {datetime.datetime.now()}")
         # Set machine learning pipeline
         loaders = create_loader()
-        # if cfg.gnn.lgvariant == 4:
-            # loaders = preprocess(loaders)
+            
         loggers = create_logger()
         model = create_model()
+        
+        if cfg.gnn.lgvariant == 6:
+            loaders = preprocess(loaders, cfg.gnn.lgvariant)
         if cfg.train.finetune:
             model = init_model_from_pretrained(model, cfg.train.finetune,
                                                cfg.train.freeze_pretrained)

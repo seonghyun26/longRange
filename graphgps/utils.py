@@ -119,19 +119,23 @@ def make_wandb_name(cfg):
             dataset_name += 'LDP'
         else:
             dataset_name += cfg.dataset.name
+            
     # Format model name.
     model_name = cfg.model.type
     if cfg.model.type in ['gnn', 'custom_gnn']:
-        model_name += f".{cfg.gnn.layer_type}"
+        model_name = f"{cfg.gnn.layer_type}"
     elif cfg.model.type == 'GPSModel':
         model_name = f"GPS.{cfg.gt.layer_type}"
     model_name += f".{cfg.name_tag}" if cfg.name_tag else ""
-    # Compose wandb run name.
-    name = f"{dataset_name}.{model_name}"
     
+    lgnn_name =""
     if cfg.gnn.linegraph:
-        name += ".LGNN"
-        name += str(cfg.gnn.layers_mp)
-        name += ".v"+str(cfg.gnn.lgvariant)
+        lgnn_name += "LG"
+        lgnn_name += str(cfg.gnn.layers_mp)
+        lgnn_name += ".v"+str(cfg.gnn.lgvariant)
+        
+    # Compose wandb run name.
+    name = f"{dataset_name}.{model_name}.{lgnn_name}"
+    
         
     return name

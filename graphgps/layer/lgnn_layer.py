@@ -102,7 +102,7 @@ class graph2linegraph(nn.Module):
         batch.lg_node_idx = lg_node_idx
         
         # NOTE: Line graph node feature 
-        if self.variant == 1:
+        if self.variant == 1 or self.variant == 5 or self.variant == 6:
             lg_x = batch.x[lg_node_idx]
             batch.x = torch.reshape(lg_x, (lg_x.shape[0], -1))
             lg_x = None
@@ -170,11 +170,11 @@ class graph2linegraph(nn.Module):
             
             # NOTE: add self loop to line graph
             loop_edge_index = [[],[]]
-            for i in range(batch.x.shape[0]-1):
-                loop_edge_index[0].append(i)
-                loop_edge_index[0].append(i+1)
-                loop_edge_index[1].append(i+1)
-                loop_edge_index[1].append(i)
+            for i in range(batch.x.shape[0]//2-1):
+                loop_edge_index[0].append(i*2)
+                loop_edge_index[0].append(i*2+1)
+                loop_edge_index[1].append(i*2+1)
+                loop_edge_index[1].append(i*2)
             batch.loopEdgeNum = torch.tensor(len(loop_edge_index[0]), device=batch.y.device, dtype=torch.int )
             batch.edge_index = torch.cat([batch.edge_index, torch.tensor(loop_edge_index, device=batch.edge_index.device)], dim=1)
             # TO Check
@@ -182,6 +182,42 @@ class graph2linegraph(nn.Module):
             batch.edge_attr = torch.cat([batch.edge_attr, batch.org_x[loop_edge_attr_idx].repeat(1,2)], dim=0)
             # print("asdf")
         elif self.variant == 4:
+            new_edge_idx = lg_node_idx[lg_edge_idx]
+            lg_edge_attr = batch.org_x[new_edge_idx[:, 0, 1]].repeat(1,2)
+            if hasattr(batch, 'edge_attr'):
+                startEdge = new_edge_idx[:, 0]
+                endEdge = new_edge_idx[:, 1]
+                startIndices = torch.where(torch.all(batch.org_edge_index.T[:, None] == startEdge, dim=2))
+                startEdgeAttr = batch.org_edge_attr[scatter(startIndices[0], startIndices[1])]
+                endIndices = torch.where(torch.all(batch.org_edge_index.T[:, None] == endEdge, dim=2))
+                endEdgeAttr = batch.org_edge_attr[scatter(endIndices[0], endIndices[1], dim=0)]
+                lg_edge_attr = torch.stack([lg_edge_attr, torch.cat([startEdgeAttr, endEdgeAttr], dim=1)], dim=2).mean(dim=2)
+                startIndices = None
+                endIndices = None
+                startEdgeAttr = None
+                endEdgeAttr = None
+            batch.edge_attr = lg_edge_attr
+            lg_edge_attr = None
+        elif self.variant == 5:
+            lg_edge_idx = torch.nonzero((lg_node_idx[:, 1, None] == lg_node_idx[:, 0]))
+            batch.edge_index = lg_edge_idx.T
+            new_edge_idx = lg_node_idx[lg_edge_idx]
+            lg_edge_attr = batch.org_x[new_edge_idx[:, 0, 1]].repeat(1,2)
+            if hasattr(batch, 'edge_attr'):
+                startEdge = new_edge_idx[:, 0]
+                endEdge = new_edge_idx[:, 1]
+                startIndices = torch.where(torch.all(batch.org_edge_index.T[:, None] == startEdge, dim=2))
+                startEdgeAttr = batch.org_edge_attr[scatter(startIndices[0], startIndices[1])]
+                endIndices = torch.where(torch.all(batch.org_edge_index.T[:, None] == endEdge, dim=2))
+                endEdgeAttr = batch.org_edge_attr[scatter(endIndices[0], endIndices[1], dim=0)]
+                lg_edge_attr = torch.stack([lg_edge_attr, torch.cat([startEdgeAttr, endEdgeAttr], dim=1)], dim=2).mean(dim=2)
+                startIndices = None
+                endIndices = None
+                startEdgeAttr = None
+                endEdgeAttr = None
+            batch.edge_attr = lg_edge_attr
+            lg_edge_attr = None
+        elif self.variant == 6:
             new_edge_idx = lg_node_idx[lg_edge_idx]
             lg_edge_attr = batch.org_x[new_edge_idx[:, 0, 1]].repeat(1,2)
             if hasattr(batch, 'edge_attr'):
@@ -307,6 +343,33 @@ class linegraph2graph(nn.Module):
             del frontEdge
             del backEdge
             del shape
+        elif self.variant == 5:
+            shape = batch.shape
+            frontNode = scatter_mean(batch.x, batch.lg_node_idx[:,0], dim=0)[:, shape[1]:]
+            frontNode = self.pad(frontNode, shape)
+            backNode = scatter_mean(batch.x, batch.lg_node_idx[:,1], dim=0)[:, :shape[1]]
+            backNode = self.pad(backNode, shape)
+            batch.x = torch.add(
+                frontNode,
+                backNode
+            )
+            
+            # Recover edge feature
+            shape = batch.org_edge_attr.shape
+            frontEdge = scatter_mean(batch.edge_attr, batch.edge_index.T[:,0], dim=0)[:, shape[1]:]
+            frontEdge = self.pad(frontEdge, shape)
+            backEdge = scatter_mean(batch.edge_attr, batch.edge_index.T[:,1], dim=0)[:, :shape[1]]
+            backEdge = self.pad(backEdge, shape)
+            batch.edge_attr = torch.add(
+                frontEdge,
+                backEdge,
+            )
+            # Garbage Collecting 
+            frontNode = None
+            backNode = None
+            frontEdge = None
+            backEdge = None
+            shape = None
         else:
             assert()
         
