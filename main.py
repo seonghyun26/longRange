@@ -214,7 +214,7 @@ if __name__ == '__main__':
         loggers = create_logger()
         model = create_model()
         
-        if cfg.gnn.lgvariant == 6:
+        if cfg.gnn.lgvariant == -1:
             loaders = preprocess(loaders, cfg.gnn.lgvariant)
         if cfg.train.finetune:
             model = init_model_from_pretrained(model, cfg.train.finetune,

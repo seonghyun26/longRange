@@ -38,6 +38,7 @@ class GatedGCNLayer(pyg_nn.conv.MessagePassing):
         self.dropout = dropout
         self.residual = residual
         self.e = None
+        self.lgvariant = lgvariant
 
     def forward(self, batch):
         x, e, edge_index = batch.x, batch.edge_attr, batch.edge_index
@@ -66,6 +67,13 @@ class GatedGCNLayer(pyg_nn.conv.MessagePassing):
                               e=e, Ax=Ax,
                               PE=pe_LapPE)
 
+        if self.lgvariant == 6:
+            alpha = 0.7
+            tempx = torch.empty_like(batch.x)
+            tempx[::2] = batch.x[1::2]
+            tempx[1::2] = batch.x[::2]
+            batch.x = alpha * batch.x + (1 - alpha) * tempx
+        
         x = self.bn_node_x(x)
         e = self.bn_edge_e(e)
 

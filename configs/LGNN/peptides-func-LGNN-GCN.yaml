@@ -12,10 +12,12 @@ dataset:
   node_encoder: True
   node_encoder_name: Atom
   node_encoder_bn: False
-  edge_encoder: False
+  edge_encoder: True
+  edge_encoder_name: Bond
+  edge_encoder_bn: False
 train:
   mode: custom
-  batch_size: 64
+  batch_size: 128
   eval_period: 1
   ckpt_period: 100
 model:
@@ -34,6 +36,7 @@ gnn:
   dropout: 0.0
   agg: mean
   normalize_adj: False
+  linegraph: True
 optim:
   optimizer: adamW
   weight_decay: 0.0
