@@ -15,7 +15,7 @@ class GatedGCNLayer(pyg_nn.conv.MessagePassing):
         Residual Gated Graph ConvNets
         https://arxiv.org/pdf/1711.07553.pdf
     """
-    def __init__(self, in_dim, out_dim, dropout, residual,
+    def __init__(self, in_dim, out_dim, dropout, residual, lgvariant=-1,
                  equivstable_pe=False, **kwargs):
         super().__init__(**kwargs)
         self.A = pyg_nn.Linear(in_dim, out_dim, bias=True)
